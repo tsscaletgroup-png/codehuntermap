@@ -2,395 +2,211 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Code Hunter & Partner Locations Map</title>
-
-    <!-- Mapbox GL JS CSS -->
-    <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
-
+    <title>Code Hunter Map</title>
+    <link href="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.css" rel="stylesheet"/>
+    <script src="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: sans-serif; }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        #map { width: 100%; height: 100vh; }
 
-        :root {
-            --bg: #0e0e12;
-            --surface: #16161d;
-            --surface2: #1e1e28;
-            --border: rgba(255,255,255,0.08);
-            --blue: #4f8ef7;
-            --orange: #f7974f;
-            --text: #e8e8f0;
-            --muted: rgba(232,232,240,0.45);
-        }
-
-        body {
-            font-family: 'DM Mono', monospace;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* ── Header ── */
-        .map-header {
-            padding: 22px 32px 18px;
-            background: var(--surface);
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-
-        .header-left h1 {
-            font-family: 'Syne', sans-serif;
-            font-size: 22px;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-            color: var(--text);
-        }
-
-        .header-left p {
+        /* Legend */
+        .legend {
+            background: rgba(10,10,18,0.85);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: #e8e8f0;
             font-size: 12px;
-            color: var(--muted);
-            margin-top: 3px;
-            letter-spacing: 0.02em;
+            line-height: 1.5;
         }
+        .legend b { display: block; font-size: 13px; margin-bottom: 2px; }
+        .legend small { display: block; opacity: 0.5; font-size: 10px; margin-bottom: 10px; }
+        .legend-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .legend-row:last-child { margin-bottom: 0; }
+        .ldot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 
-        .header-badges {
-            display: flex;
-            gap: 10px;
-            margin-left: auto;
-            flex-wrap: wrap;
-        }
-
-        .badge {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 14px;
-            border-radius: 999px;
-            font-size: 11px;
-            font-weight: 500;
-            border: 1px solid var(--border);
-            background: var(--surface2);
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
-        }
-
-        .badge-dot {
-            width: 9px;
-            height: 9px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-
-        .badge-dot.blue { background: var(--blue); box-shadow: 0 0 6px var(--blue); }
-        .badge-dot.orange { background: var(--orange); box-shadow: 0 0 6px var(--orange); }
-
-        /* ── Map wrapper ── */
-        #map-container {
-            flex: 1;
-            position: relative;
-            min-height: 600px;
-        }
-
-        #map {
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            inset: 0;
-        }
-
-
-
-        /* ── Custom popup ── */
-        .mapboxgl-popup-content {
-            background: var(--surface2) !important;
-            color: var(--text) !important;
-            border: 1px solid var(--border) !important;
+        /* Popup */
+        .maplibregl-popup-content {
+            background: rgba(10,10,18,0.95) !important;
+            color: #e8e8f0 !important;
+            border: 1px solid rgba(255,255,255,0.1) !important;
             border-radius: 8px !important;
-            padding: 12px 16px !important;
-            font-family: 'DM Mono', monospace !important;
+            padding: 10px 14px !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
+            font-family: sans-serif !important;
             font-size: 13px !important;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5) !important;
-            min-width: 160px;
         }
-
-        .mapboxgl-popup-tip {
-            border-top-color: var(--surface2) !important;
-            border-bottom-color: var(--surface2) !important;
+        .maplibregl-popup-tip {
+            border-top-color: rgba(10,10,18,0.95) !important;
+            border-bottom-color: rgba(10,10,18,0.95) !important;
         }
+        .maplibregl-popup-close-button { color: rgba(232,232,240,0.5) !important; font-size: 16px !important; }
 
-        .popup-name {
-            font-family: 'Syne', sans-serif;
-            font-size: 14px;
-            font-weight: 700;
-            margin-bottom: 4px;
-        }
+        .pname { font-weight: bold; margin-bottom: 3px; }
+        .ptype { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+        .psub  { font-size: 11px; margin-top: 4px; opacity: 0.5; }
 
-        .popup-type {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            opacity: 0.55;
-        }
-
-        .popup-type.blue { color: var(--blue); opacity: 1; }
-        .popup-type.orange { color: var(--orange); opacity: 1; }
-
-        /* ── Mapbox overrides ── */
-        .mapboxgl-ctrl-logo { display: none !important; }
-
-        .mapboxgl-ctrl-group {
-            background: var(--surface2) !important;
-            border: 1px solid var(--border) !important;
+        /* Controls */
+        .maplibregl-ctrl-group {
+            background: rgba(10,10,18,0.85) !important;
+            border: 1px solid rgba(255,255,255,0.1) !important;
             border-radius: 8px !important;
-            overflow: hidden;
         }
-
-        .mapboxgl-ctrl-group button {
-            background: transparent !important;
-        }
-
-        .mapboxgl-ctrl-group button .mapboxgl-ctrl-icon {
-            filter: invert(1) opacity(0.7);
-        }
-
-        .mapboxgl-ctrl-attrib {
-            background: rgba(14,14,18,0.85) !important;
-            color: var(--muted) !important;
-            font-family: 'DM Mono', monospace !important;
+        .maplibregl-ctrl-group button { background: transparent !important; }
+        .maplibregl-ctrl-group button span { filter: invert(1) opacity(0.7); }
+        .maplibregl-ctrl-attrib {
+            background: rgba(10,10,18,0.75) !important;
+            color: rgba(232,232,240,0.4) !important;
             font-size: 10px !important;
         }
-
-        .mapboxgl-ctrl-attrib a { color: var(--muted) !important; }
-
-        /* ── Responsive ── */
-        @media (max-width: 600px) {
-            .map-header { padding: 16px 18px; }
-            .header-left h1 { font-size: 17px; }
-            .header-badges { margin-left: 0; }
-            #map-container { min-height: 420px; }
-            #token-notice input { width: 100%; }
-        }
+        .maplibregl-ctrl-attrib a { color: rgba(232,232,240,0.4) !important; }
+        .maplibregl-ctrl-logo { display: none !important; }
     </style>
 </head>
 <body>
 
-    <div class="map-header">
-        <div class="header-left">
-            <h1>📍 Code Hunter & Partner Locations</h1>
-            <p>Esplora tutte le location in Italia e all'estero</p>
-        </div>
-        <div class="header-badges">
-            <div class="badge"><span class="badge-dot blue"></span>Code Hunter (12)</div>
-            <div class="badge"><span class="badge-dot orange"></span>Partner (28)</div>
-        </div>
-    </div>
+<div id="map"></div>
 
-    <div id="map-container">
+<script>
+    var codeHunter = [
+        { coords: [10.82, 46.22], name: "Madonna di Campiglio" },
+        { coords: [10.91, 46.35], name: "Malé" },
+        { coords: [11.09, 46.35], name: "Coredo" },
+        { coords: [11.14, 46.40], name: "Cavareno" },
+        { coords: [11.07, 46.19], name: "Fai della Paganella" },
+        { coords: [10.96, 46.14], name: "Molveno" },
+        { coords: [11.38, 45.38], name: "Lonigo" },
+        { coords: [11.42, 45.36], name: "Alonte" },
+        { coords: [11.53, 45.40], name: "Villaga" },
+        { coords: [16.52, 40.17], name: "Rotondella" },
+        { coords: [12.37, 46.42], name: "Pieve di Cadore" },
+        { coords: [12.35, 46.39], name: "Perarolo di Cadore" }
+    ];
 
-        <div id="map"></div>
-    </div>
+    var partners = [
+        { coords: [10.62, 59.90], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [10.80, 59.90], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [10.53, 59.89], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [10.43, 59.83], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [10.63, 59.67], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [10.72, 59.44], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [10.93, 59.24], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [11.39, 59.14], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [11.51, 58.99], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [10.15, 59.76], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [10.33, 59.55], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [10.41, 59.28], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [10.26, 59.12], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [9.64,  59.16], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [8.11,  58.19], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [7.93,  58.19], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [6.08,  58.48], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [5.74,  58.83], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [5.72,  58.95], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [5.30,  59.44], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [5.32,  60.34], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [6.69,  61.49], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [10.19, 60.09], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [11.05, 60.81], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [10.47, 63.39], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [10.07, 63.59], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [17.22, 68.72], name: "TurOrientering", subtitle: "www.turorientering.no" },
+        { coords: [19.01, 69.59], name: "TurOrientering", subtitle: "www.turorientering.no" }
+    ];
 
-    <!-- Mapbox GL JS -->
-    <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-        // ── Location data ────────────────────────────────────────────────────
-        const locations = {
-            codeHunter: [
-                { coords: [10.82, 46.22], name: "Madonna di Campiglio" },
-                { coords: [10.91, 46.35], name: "Malé" },
-                { coords: [11.09, 46.35], name: "Coredo" },
-                { coords: [11.14, 46.40], name: "Cavareno" },
-                { coords: [11.07, 46.19], name: "Fai della Paganella" },
-                { coords: [10.96, 46.14], name: "Molveno" },
-                { coords: [11.38, 45.38], name: "Lonigo" },
-                { coords: [11.42, 45.36], name: "Alonte" },
-                { coords: [11.53, 45.40], name: "Villaga" },
-                { coords: [16.52, 40.17], name: "Rotondella" },
-                { coords: [12.37, 46.42], name: "Pieve di Cadore" },
-                { coords: [12.35, 46.39], name: "Perarolo di Cadore" }
-            ],
-            partners: [
-                { coords: [10.62, 59.90], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [10.80, 59.90], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [10.53, 59.89], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [10.43, 59.83], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [10.63, 59.67], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [10.72, 59.44], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [10.93, 59.24], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [11.39, 59.14], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [11.51, 58.99], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [10.15, 59.76], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [10.33, 59.55], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [10.41, 59.28], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [10.26, 59.12], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [9.64,  59.16], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [8.11,  58.19], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [7.93,  58.19], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [6.08,  58.48], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [5.74,  58.83], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [5.72,  58.95], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [5.30,  59.44], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [5.32,  60.34], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [6.69,  61.49], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [10.19, 60.09], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [11.05, 60.81], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [10.47, 63.39], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [10.07, 63.59], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [17.22, 68.72], name: "TurOrientering", subtitle: "www.turorientering.no" },
-                { coords: [19.01, 69.59], name: "TurOrientering", subtitle: "www.turorientering.no" },
-            ]
-        };
-
-        // ── GeoJSON helpers ───────────────────────────────────────────────────
-        function toGeoJSON(arr, type) {
-            return {
-                type: 'FeatureCollection',
-                features: arr.map(loc => ({
+    function toGeoJSON(arr, type) {
+        return {
+            type: 'FeatureCollection',
+            features: arr.map(function(loc) {
+                return {
                     type: 'Feature',
                     geometry: { type: 'Point', coordinates: loc.coords },
-                    properties: { name: loc.name, subtitle: loc.subtitle || '', locType: type }
-                }))
-            };
-        }
+                    properties: { name: loc.name, subtitle: loc.subtitle || '', type: type }
+                };
+            })
+        };
+    }
 
-        // ── Map init ──────────────────────────────────────────────────────────
-        mapboxgl.accessToken = 'pk.eyJ1IjoidG9tbWFzb3NjYWxldGdyb3VwIiwiYSI6ImNtbzc1MWt2NDAyNWwycXFyNW0wNGxyb2gifQ.3T4FNoWkcMhFO7lr2oQ1fA';
+    var map = new maplibregl.Map({
+        container: 'map',
+        style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+        center: [12.5, 42.5],
+        zoom: 5.5,
+        scrollZoom: false
+    });
 
-        const map = new mapboxgl.Map({
-            container: 'map',
-            style: 'mapbox://styles/mapbox/dark-v11',
-            center: [12.5, 42.5],   // Italy
-            zoom: 5.5,
-            antialias: true
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+
+    map.on('load', function() {
+
+        map.addSource('ch', { type: 'geojson', data: toGeoJSON(codeHunter, 'ch') });
+        map.addSource('pt', { type: 'geojson', data: toGeoJSON(partners, 'pt') });
+
+        // Partner layers
+        map.addLayer({ id: 'pt-glow', type: 'circle', source: 'pt',
+            paint: { 'circle-radius': 14, 'circle-color': '#f7974f', 'circle-opacity': 0.15, 'circle-blur': 1 }
+        });
+        map.addLayer({ id: 'pt-dot', type: 'circle', source: 'pt',
+            paint: {
+                'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 5, 10, 8],
+                'circle-color': '#f7974f', 'circle-opacity': 0.9,
+                'circle-stroke-width': 1, 'circle-stroke-color': '#fff', 'circle-stroke-opacity': 0.25
+            }
         });
 
-            map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+        // Code Hunter layers
+        map.addLayer({ id: 'ch-glow', type: 'circle', source: 'ch',
+            paint: { 'circle-radius': 16, 'circle-color': '#4f8ef7', 'circle-opacity': 0.15, 'circle-blur': 1 }
+        });
+        map.addLayer({ id: 'ch-dot', type: 'circle', source: 'ch',
+            paint: {
+                'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 6, 10, 10],
+                'circle-color': '#4f8ef7', 'circle-opacity': 0.95,
+                'circle-stroke-width': 1.5, 'circle-stroke-color': '#fff', 'circle-stroke-opacity': 0.3
+            }
+        });
 
-            map.on('load', () => {
-                // Add sources
-                map.addSource('codeHunter', { type: 'geojson', data: toGeoJSON(locations.codeHunter, 'codeHunter') });
-                map.addSource('partners',   { type: 'geojson', data: toGeoJSON(locations.partners,   'partner') });
-
-                // ── Partner layer (orange circles) ──
-                map.addLayer({
-                    id: 'partners-glow',
-                    type: 'circle',
-                    source: 'partners',
-                    paint: {
-                        'circle-radius': 18,
-                        'circle-color': '#f7974f',
-                        'circle-opacity': 0.12,
-                        'circle-blur': 1
-                    }
-                });
-
-                map.addLayer({
-                    id: 'partners-circle',
-                    type: 'circle',
-                    source: 'partners',
-                    paint: {
-                        'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 5, 10, 9],
-                        'circle-color': '#f7974f',
-                        'circle-opacity': 0.92,
-                        'circle-stroke-width': 1.5,
-                        'circle-stroke-color': '#fff',
-                        'circle-stroke-opacity': 0.25
-                    }
-                });
-
-                // ── Code Hunter layer (blue circles) ──
-                map.addLayer({
-                    id: 'codehunter-glow',
-                    type: 'circle',
-                    source: 'codeHunter',
-                    paint: {
-                        'circle-radius': 20,
-                        'circle-color': '#4f8ef7',
-                        'circle-opacity': 0.14,
-                        'circle-blur': 1
-                    }
-                });
-
-                map.addLayer({
-                    id: 'codehunter-circle',
-                    type: 'circle',
-                    source: 'codeHunter',
-                    paint: {
-                        'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 6, 10, 11],
-                        'circle-color': '#4f8ef7',
-                        'circle-opacity': 0.95,
-                        'circle-stroke-width': 1.5,
-                        'circle-stroke-color': '#fff',
-                        'circle-stroke-opacity': 0.35
-                    }
-                });
-
-                // ── Labels ──
-                map.addLayer({
-                    id: 'codehunter-labels',
-                    type: 'symbol',
-                    source: 'codeHunter',
-                    minzoom: 7,
-                    layout: {
-                        'text-field': ['get', 'name'],
-                        'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'],
-                        'text-size': 11,
-                        'text-offset': [0, 1.4],
-                        'text-anchor': 'top'
-                    },
-                    paint: {
-                        'text-color': '#c8d8ff',
-                        'text-halo-color': '#0e0e12',
-                        'text-halo-width': 1.5
-                    }
-                });
-
-                // ── Fit bounds ──
-                const allCoords = [
-                    ...locations.codeHunter.map(l => l.coords),
-                    ...locations.partners.map(l => l.coords)
-                ];
-                const bounds = allCoords.reduce(
-                    (b, c) => b.extend(c),
-                    new mapboxgl.LngLatBounds(allCoords[0], allCoords[0])
-                );
-                map.fitBounds(bounds, { padding: 60, duration: 1200 });
-
-                // ── Popups ──
-                function addPopup(layerId, color) {
-                    map.on('click', layerId, (e) => {
-                        const { name, subtitle, locType } = e.features[0].properties;
-                        const typeLabel = locType === 'codeHunter' ? 'Code Hunter' : 'Partner';
-                        new mapboxgl.Popup({ offset: 12, closeButton: false })
-                            .setLngLat(e.features[0].geometry.coordinates.slice())
-                            .setHTML(`
-                                <div class="popup-name">${name}</div>
-                                <div class="popup-type ${color}">${typeLabel}</div>
-                                ${subtitle ? `<div style="font-size:11px;margin-top:6px;opacity:0.6">${subtitle}</div>` : ''}
-                            `)
-                            .addTo(map);
-                    });
-                    map.on('mouseenter', layerId, () => map.getCanvas().style.cursor = 'pointer');
-                    map.on('mouseleave', layerId, () => map.getCanvas().style.cursor = '');
-                }
-
-                addPopup('codehunter-circle', 'blue');
-                addPopup('partners-circle',   'orange');
+        // Popups
+        function addPopup(layer, color) {
+            map.on('click', layer, function(e) {
+                var p = e.features[0].properties;
+                new maplibregl.Popup({ offset: 10 })
+                    .setLngLat(e.features[0].geometry.coordinates.slice())
+                    .setHTML(
+                        '<div class="pname">' + p.name + '</div>' +
+                        '<div class="ptype" style="color:' + color + '">' + (p.type === 'ch' ? 'Code Hunter' : 'Partner') + '</div>' +
+                        (p.subtitle ? '<div class="psub">' + p.subtitle + '</div>' : '')
+                    )
+                    .addTo(map);
             });
-        }); // end DOMContentLoaded
-    </script>
+            map.on('mouseenter', layer, function() { map.getCanvas().style.cursor = 'pointer'; });
+            map.on('mouseleave', layer, function() { map.getCanvas().style.cursor = ''; });
+        }
+
+        addPopup('ch-dot', '#4f8ef7');
+        addPopup('pt-dot', '#f7974f');
+
+        // Legend
+        var LegendControl = function() {};
+        LegendControl.prototype.onAdd = function() {
+            this._container = document.createElement('div');
+            this._container.className = 'legend maplibregl-ctrl';
+            this._container.innerHTML =
+                '<b>📍 Code Hunter & Partners</b>' +
+                '<small>Location in Italia e all\'estero</small>' +
+                '<div class="legend-row"><div class="ldot" style="background:#4f8ef7;box-shadow:0 0 5px #4f8ef7"></div><span>Code Hunter (' + codeHunter.length + ')</span></div>' +
+                '<div class="legend-row"><div class="ldot" style="background:#f7974f;box-shadow:0 0 5px #f7974f"></div><span>Partner (' + partners.length + ')</span></div>';
+            return this._container;
+        };
+        LegendControl.prototype.onRemove = function() {
+            this._container.parentNode.removeChild(this._container);
+        };
+        map.addControl(new LegendControl(), 'top-left');
+    });
+</script>
+
 </body>
 </html>
