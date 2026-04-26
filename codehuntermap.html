@@ -1,212 +1,950 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Code Hunter Map</title>
-    <link href="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.css" rel="stylesheet"/>
-    <script src="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: sans-serif; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QR Registry</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap');
 
-        #map { width: 100%; height: 100vh; }
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c27;
+    --border: #2a2a3d;
+    --accent: #00e5a0;
+    --accent2: #ff4d6d;
+    --accent3: #7c6aff;
+    --text: #e8e8f0;
+    --muted: #6b6b8a;
+    --success: #00e5a0;
+    --error: #ff4d6d;
+    --warn: #ffb830;
+  }
 
-        /* Legend */
-        .legend {
-            background: rgba(10,10,18,0.85);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 10px;
-            padding: 12px 16px;
-            color: #e8e8f0;
-            font-size: 12px;
-            line-height: 1.5;
-        }
-        .legend b { display: block; font-size: 13px; margin-bottom: 2px; }
-        .legend small { display: block; opacity: 0.5; font-size: 10px; margin-bottom: 10px; }
-        .legend-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-        .legend-row:last-child { margin-bottom: 0; }
-        .ldot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        /* Popup */
-        .maplibregl-popup-content {
-            background: rgba(10,10,18,0.95) !important;
-            color: #e8e8f0 !important;
-            border: 1px solid rgba(255,255,255,0.1) !important;
-            border-radius: 8px !important;
-            padding: 10px 14px !important;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
-            font-family: sans-serif !important;
-            font-size: 13px !important;
-        }
-        .maplibregl-popup-tip {
-            border-top-color: rgba(10,10,18,0.95) !important;
-            border-bottom-color: rgba(10,10,18,0.95) !important;
-        }
-        .maplibregl-popup-close-button { color: rgba(232,232,240,0.5) !important; font-size: 16px !important; }
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
 
-        .pname { font-weight: bold; margin-bottom: 3px; }
-        .ptype { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
-        .psub  { font-size: 11px; margin-top: 4px; opacity: 0.5; }
+  /* Subtle grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,160,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,160,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
 
-        /* Controls */
-        .maplibregl-ctrl-group {
-            background: rgba(10,10,18,0.85) !important;
-            border: 1px solid rgba(255,255,255,0.1) !important;
-            border-radius: 8px !important;
-        }
-        .maplibregl-ctrl-group button { background: transparent !important; }
-        .maplibregl-ctrl-group button span { filter: invert(1) opacity(0.7); }
-        .maplibregl-ctrl-attrib {
-            background: rgba(10,10,18,0.75) !important;
-            color: rgba(232,232,240,0.4) !important;
-            font-size: 10px !important;
-        }
-        .maplibregl-ctrl-attrib a { color: rgba(232,232,240,0.4) !important; }
-        .maplibregl-ctrl-logo { display: none !important; }
-    </style>
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px 16px 60px;
+  }
+
+  /* Header */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 36px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    width: 44px; height: 44px;
+    background: var(--accent);
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+
+  .logo svg { width: 26px; height: 26px; }
+
+  header h1 {
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+
+  header span {
+    font-size: 0.75rem;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    display: block;
+    margin-top: 2px;
+  }
+
+  .status-dot {
+    margin-left: auto;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--muted);
+    box-shadow: 0 0 0 3px rgba(107,107,138,0.2);
+    transition: all 0.3s;
+  }
+  .status-dot.active {
+    background: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,229,160,0.2), 0 0 12px var(--accent);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 0 3px rgba(0,229,160,0.2), 0 0 12px var(--accent); }
+    50% { box-shadow: 0 0 0 6px rgba(0,229,160,0.1), 0 0 20px var(--accent); }
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 28px;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 10px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+  }
+
+  .tab.active {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* Panel */
+  .panel { display: none; animation: fadeIn 0.2s ease; }
+  .panel.active { display: block; }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(4px); } to { opacity:1; transform: translateY(0); } }
+
+  /* Section titles */
+  .section-title {
+    font-size: 0.7rem;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  /* Card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  /* Form row */
+  .form-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 140px;
+  }
+
+  label {
+    font-size: 0.75rem;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+
+  input, textarea, select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--accent3);
+    box-shadow: 0 0 0 3px rgba(124,106,255,0.12);
+  }
+
+  textarea { resize: vertical; min-height: 70px; }
+
+  /* Buttons */
+  .btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    white-space: nowrap;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+  }
+  .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--error);
+    border: 1px solid var(--error);
+    padding: 6px 12px;
+    font-size: 0.75rem;
+  }
+  .btn-danger:hover { background: rgba(255,77,109,0.1); }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+  }
+  .btn-outline:hover { background: rgba(0,229,160,0.07); }
+
+  /* QR List */
+  .qr-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .qr-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    transition: border-color 0.2s;
+    animation: slideIn 0.2s ease;
+  }
+  @keyframes slideIn { from { opacity:0; transform: translateX(-8px); } to { opacity:1; transform:translateX(0); } }
+
+  .qr-item:hover { border-color: var(--accent3); }
+
+  .qr-badge {
+    width: 38px; height: 38px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent3), var(--accent));
+    display: grid;
+    place-items: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: #fff;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .qr-info { flex: 1; min-width: 0; }
+  .qr-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .qr-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+  }
+  .qr-desc {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-family: 'Space Mono', monospace;
+  }
+  .empty-state div { font-size: 2.5rem; margin-bottom: 12px; }
+
+  /* Scanner */
+  .scanner-container {
+    position: relative;
+    background: #000;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 2px solid var(--border);
+    margin-bottom: 20px;
+    aspect-ratio: 4/3;
+    max-height: 400px;
+  }
+
+  #video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .scan-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  .scan-frame {
+    width: 200px; height: 200px;
+    position: relative;
+  }
+
+  .scan-frame::before, .scan-frame::after,
+  .scan-frame span::before, .scan-frame span::after {
+    content: '';
+    position: absolute;
+    width: 28px; height: 28px;
+    border-color: var(--accent);
+    border-style: solid;
+  }
+
+  .scan-frame::before { top: 0; left: 0; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+  .scan-frame::after { top: 0; right: 0; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+  .scan-frame span::before { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+  .scan-frame span::after { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+  .scan-line {
+    position: absolute;
+    left: 10px; right: 10px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    animation: scan 2s linear infinite;
+    top: 0;
+  }
+  @keyframes scan {
+    0% { top: 10px; opacity: 1; }
+    90% { opacity: 1; }
+    100% { top: 190px; opacity: 0; }
+  }
+
+  .scanner-idle {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface);
+    gap: 14px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+  }
+
+  .scanner-idle svg { opacity: 0.3; }
+
+  /* Result card */
+  .result-card {
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 16px;
+    display: none;
+    animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes popIn { from { opacity:0; transform: scale(0.9); } to { opacity:1; transform:scale(1); } }
+
+  .result-card.found {
+    display: block;
+    background: rgba(0,229,160,0.07);
+    border: 2px solid var(--accent);
+  }
+  .result-card.not-found {
+    display: block;
+    background: rgba(255,77,109,0.07);
+    border: 2px solid var(--error);
+  }
+
+  .result-label {
+    font-size: 0.65rem;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .result-card.found .result-label { color: var(--accent); }
+  .result-card.not-found .result-label { color: var(--error); }
+
+  .result-name {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+  .result-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--muted);
+    background: var(--surface2);
+    border-radius: 6px;
+    padding: 6px 10px;
+    margin-bottom: 8px;
+    word-break: break-all;
+  }
+  .result-desc {
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  /* Scan log */
+  .log-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+
+  .log-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--surface2);
+    border-radius: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    border-left: 3px solid;
+    animation: slideIn 0.15s ease;
+  }
+  .log-item.match { border-color: var(--accent); }
+  .log-item.no-match { border-color: var(--error); }
+
+  .log-time { color: var(--muted); flex-shrink: 0; }
+  .log-name { color: var(--text); font-weight: 700; flex: 1; }
+  .log-val { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
+
+  /* Controls row */
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 20px; }
+
+  /* Tag */
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 100px;
+    font-size: 0.65rem;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .tag-green { background: rgba(0,229,160,0.12); color: var(--accent); }
+  .tag-red { background: rgba(255,77,109,0.12); color: var(--error); }
+  .tag-purple { background: rgba(124,106,255,0.12); color: var(--accent3); }
+
+  canvas { display: none; }
+
+  /* Stats */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    text-align: center;
+  }
+
+  .stat-num {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--accent);
+    font-family: 'Space Mono', monospace;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-label {
+    font-size: 0.65rem;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* Sound flash */
+  .flash {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0;
+  }
+  .flash.green { background: rgba(0,229,160,0.12); animation: flash 0.4s ease; }
+  .flash.red { background: rgba(255,77,109,0.12); animation: flash 0.4s ease; }
+  @keyframes flash { 0%,100% { opacity:0; } 50% { opacity:1; } }
+
+  @media (max-width: 500px) {
+    .stats-row { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .stat-num { font-size: 1.4rem; }
+    header h1 { font-size: 1.3rem; }
+  }
+</style>
 </head>
 <body>
 
-<div id="map"></div>
+<div class="flash" id="flash"></div>
+<canvas id="canvas"></canvas>
+
+<div class="app">
+  <header>
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round">
+        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="3" height="3" rx="0.5"/>
+        <rect x="19" y="14" width="2" height="2" rx="0.5"/><rect x="14" y="19" width="2" height="2" rx="0.5"/>
+        <rect x="18" y="19" width="3" height="2" rx="0.5"/>
+      </svg>
+    </div>
+    <div>
+      <h1>QR Registry</h1>
+      <span>Scan · Identify · Track</span>
+    </div>
+    <div class="status-dot" id="statusDot"></div>
+  </header>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-num" id="statTotal">0</div>
+      <div class="stat-label">Registered</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="statScanned">0</div>
+      <div class="stat-label">Scanned</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="statMatched">0</div>
+      <div class="stat-label">Matched</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('registry')">📋 Registry</button>
+    <button class="tab" onclick="switchTab('scanner')">📷 Scanner</button>
+    <button class="tab" onclick="switchTab('log')">📜 Log</button>
+  </div>
+
+  <!-- REGISTRY TAB -->
+  <div id="tab-registry" class="panel active">
+    <p class="section-title">Add QR Code Entry</p>
+    <div class="card">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Label / Name *</label>
+          <input type="text" id="inputName" placeholder="e.g. Asset #42" />
+        </div>
+        <div class="form-group">
+          <label>QR Code Value *</label>
+          <input type="text" id="inputValue" placeholder="exact string encoded in QR" />
+        </div>
+      </div>
+      <div class="form-row" style="margin-top:10px;">
+        <div class="form-group" style="flex:2;">
+          <label>Description (optional)</label>
+          <input type="text" id="inputDesc" placeholder="e.g. Stored in Room B, shelf 3" />
+        </div>
+        <div class="form-group" style="flex:none; justify-content:flex-end;">
+          <label style="visibility:hidden;">add</label>
+          <button class="btn btn-primary" onclick="addEntry()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Entry
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <p class="section-title" style="margin-top:8px;">Registry (<span id="countLabel">0</span> entries)</p>
+    <div class="qr-list" id="qrList">
+      <div class="empty-state">
+        <div>📭</div>
+        No entries yet. Add a QR code above.
+      </div>
+    </div>
+  </div>
+
+  <!-- SCANNER TAB -->
+  <div id="tab-scanner" class="panel">
+    <!-- Result -->
+    <div id="resultCard" class="result-card">
+      <div class="result-label">
+        <span id="resultIcon">●</span>
+        <span id="resultStatus">MATCH FOUND</span>
+      </div>
+      <div class="result-name" id="resultName">—</div>
+      <div class="result-value" id="resultValue">—</div>
+      <div class="result-desc" id="resultDesc"></div>
+    </div>
+
+    <div class="scanner-container" id="scannerContainer">
+      <div class="scanner-idle" id="scannerIdle">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/>
+          <rect x="7" y="7" width="4" height="4" rx="0.5"/><rect x="13" y="7" width="4" height="4" rx="0.5"/>
+          <rect x="7" y="13" width="4" height="4" rx="0.5"/><rect x="13" y="13" width="2" height="2" rx="0.5"/>
+        </svg>
+        Camera not active
+      </div>
+      <video id="video" autoplay playsinline muted></video>
+      <div class="scan-overlay" id="scanOverlay" style="display:none;">
+        <div class="scan-frame">
+          <span></span>
+          <div class="scan-line"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-primary" id="btnScan" onclick="toggleScanner()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M6.3 6.3A8 8 0 1017.7 17.7"/></svg>
+        Start Scanner
+      </button>
+      <button class="btn btn-outline" onclick="clearResult()">Clear</button>
+      <div id="camStatus" style="font-size:0.75rem; font-family:'Space Mono',monospace; color:var(--muted); margin-left:auto;"></div>
+    </div>
+
+    <p class="section-title">How to use</p>
+    <div class="card" style="font-size:0.8rem; color:var(--muted); font-family:'Space Mono',monospace; line-height:1.7;">
+      1. Add QR codes in the <strong style="color:var(--text)">Registry</strong> tab first.<br>
+      2. Press <strong style="color:var(--text)">Start Scanner</strong> and allow camera.<br>
+      3. Point your camera at a QR code — it will be identified instantly.<br>
+      4. Green = found in registry · Red = unknown code.
+    </div>
+  </div>
+
+  <!-- LOG TAB -->
+  <div id="tab-log" class="panel">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+      <p class="section-title" style="margin:0;">Scan History</p>
+      <button class="btn btn-danger" onclick="clearLog()">Clear Log</button>
+    </div>
+    <div class="log-list" id="logList">
+      <div class="empty-state">
+        <div>🗒️</div>
+        No scans yet.
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
-    var codeHunter = [
-        { coords: [10.82, 46.22], name: "Madonna di Campiglio" },
-        { coords: [10.91, 46.35], name: "Malé" },
-        { coords: [11.09, 46.35], name: "Coredo" },
-        { coords: [11.14, 46.40], name: "Cavareno" },
-        { coords: [11.07, 46.19], name: "Fai della Paganella" },
-        { coords: [10.96, 46.14], name: "Molveno" },
-        { coords: [11.38, 45.38], name: "Lonigo" },
-        { coords: [11.42, 45.36], name: "Alonte" },
-        { coords: [11.53, 45.40], name: "Villaga" },
-        { coords: [16.52, 40.17], name: "Rotondella" },
-        { coords: [12.37, 46.42], name: "Pieve di Cadore" },
-        { coords: [12.35, 46.39], name: "Perarolo di Cadore" }
-    ];
+  // ── State ──────────────────────────────────────────────────────────
+  let registry = JSON.parse(localStorage.getItem('qr-registry') || '[]');
+  let scanLog = JSON.parse(localStorage.getItem('qr-log') || '[]');
+  let scanning = false;
+  let stream = null;
+  let rafId = null;
+  let lastScanned = '';
+  let lastScannedTime = 0;
+  let scanCount = 0, matchCount = 0;
 
-    var partners = [
-        { coords: [10.62, 59.90], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [10.80, 59.90], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [10.53, 59.89], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [10.43, 59.83], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [10.63, 59.67], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [10.72, 59.44], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [10.93, 59.24], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [11.39, 59.14], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [11.51, 58.99], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [10.15, 59.76], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [10.33, 59.55], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [10.41, 59.28], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [10.26, 59.12], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [9.64,  59.16], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [8.11,  58.19], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [7.93,  58.19], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [6.08,  58.48], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [5.74,  58.83], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [5.72,  58.95], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [5.30,  59.44], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [5.32,  60.34], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [6.69,  61.49], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [10.19, 60.09], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [11.05, 60.81], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [10.47, 63.39], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [10.07, 63.59], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [17.22, 68.72], name: "TurOrientering", subtitle: "www.turorientering.no" },
-        { coords: [19.01, 69.59], name: "TurOrientering", subtitle: "www.turorientering.no" }
-    ];
+  // ── Persist ────────────────────────────────────────────────────────
+  function save() {
+    localStorage.setItem('qr-registry', JSON.stringify(registry));
+    localStorage.setItem('qr-log', JSON.stringify(scanLog));
+  }
 
-    function toGeoJSON(arr, type) {
-        return {
-            type: 'FeatureCollection',
-            features: arr.map(function(loc) {
-                return {
-                    type: 'Feature',
-                    geometry: { type: 'Point', coordinates: loc.coords },
-                    properties: { name: loc.name, subtitle: loc.subtitle || '', type: type }
-                };
-            })
-        };
+  // ── Tabs ───────────────────────────────────────────────────────────
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach((t,i) => {
+      t.classList.toggle('active', ['registry','scanner','log'][i] === name);
+    });
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+  }
+
+  // ── Registry ───────────────────────────────────────────────────────
+  function addEntry() {
+    const name = document.getElementById('inputName').value.trim();
+    const value = document.getElementById('inputValue').value.trim();
+    const desc = document.getElementById('inputDesc').value.trim();
+
+    if (!name || !value) {
+      shake(document.getElementById(name ? 'inputValue' : 'inputName'));
+      return;
     }
 
-    var map = new maplibregl.Map({
-        container: 'map',
-        style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-        center: [12.5, 42.5],
-        zoom: 5.5,
-        scrollZoom: false
+    if (registry.find(e => e.value === value)) {
+      alert('A QR code with this value already exists.');
+      return;
+    }
+
+    registry.push({ id: Date.now(), name, value, desc });
+    save();
+    renderRegistry();
+
+    document.getElementById('inputName').value = '';
+    document.getElementById('inputValue').value = '';
+    document.getElementById('inputDesc').value = '';
+    document.getElementById('inputName').focus();
+  }
+
+  function removeEntry(id) {
+    registry = registry.filter(e => e.id !== id);
+    save();
+    renderRegistry();
+  }
+
+  function renderRegistry() {
+    const list = document.getElementById('qrList');
+    const count = document.getElementById('countLabel');
+    count.textContent = registry.length;
+    updateStats();
+
+    if (registry.length === 0) {
+      list.innerHTML = '<div class="empty-state"><div>📭</div>No entries yet. Add a QR code above.</div>';
+      return;
+    }
+
+    list.innerHTML = registry.map(e => `
+      <div class="qr-item">
+        <div class="qr-badge">${e.name.slice(0,3).toUpperCase()}</div>
+        <div class="qr-info">
+          <div class="qr-name">${esc(e.name)}</div>
+          <div class="qr-value">${esc(e.value)}</div>
+          ${e.desc ? `<div class="qr-desc">${esc(e.desc)}</div>` : ''}
+        </div>
+        <span class="tag tag-purple">QR</span>
+        <button class="btn btn-danger" onclick="removeEntry(${e.id})">✕</button>
+      </div>
+    `).join('');
+  }
+
+  // ── Scanner ────────────────────────────────────────────────────────
+  async function toggleScanner() {
+    if (scanning) {
+      stopScanner();
+    } else {
+      await startScanner();
+    }
+  }
+
+  async function startScanner() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+      });
+      const video = document.getElementById('video');
+      video.srcObject = stream;
+      await video.play();
+
+      scanning = true;
+      document.getElementById('scannerIdle').style.display = 'none';
+      document.getElementById('scanOverlay').style.display = 'flex';
+      document.getElementById('statusDot').classList.add('active');
+      document.getElementById('btnScan').innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="6" y="6" width="12" height="12" rx="2"/></svg> Stop Scanner`;
+      document.getElementById('camStatus').textContent = 'Camera active';
+
+      requestAnimationFrame(scanFrame);
+    } catch (e) {
+      document.getElementById('camStatus').textContent = 'Camera error: ' + e.message;
+    }
+  }
+
+  function stopScanner() {
+    scanning = false;
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    document.getElementById('video').srcObject = null;
+    document.getElementById('scannerIdle').style.display = 'flex';
+    document.getElementById('scanOverlay').style.display = 'none';
+    document.getElementById('statusDot').classList.remove('active');
+    document.getElementById('btnScan').innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M6.3 6.3A8 8 0 1017.7 17.7"/></svg> Start Scanner`;
+    document.getElementById('camStatus').textContent = '';
+  }
+
+  function scanFrame() {
+    if (!scanning) return;
+    rafId = requestAnimationFrame(scanFrame);
+
+    const video = document.getElementById('video');
+    if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+
+    const canvas = document.getElementById('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(video, 0, 0);
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imageData.data, imageData.width, imageData.height, {
+      inversionAttempts: 'dontInvert'
     });
 
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+    if (code) {
+      const val = code.data;
+      const now = Date.now();
+      // Debounce: same code within 2s
+      if (val === lastScanned && now - lastScannedTime < 2000) return;
+      lastScanned = val;
+      lastScannedTime = now;
+      handleDetection(val);
+    }
+  }
 
-    map.on('load', function() {
+  function handleDetection(rawValue) {
+    scanCount++;
+    const entry = registry.find(e => e.value === rawValue);
+    const matched = !!entry;
+    if (matched) matchCount++;
+    updateStats();
 
-        map.addSource('ch', { type: 'geojson', data: toGeoJSON(codeHunter, 'ch') });
-        map.addSource('pt', { type: 'geojson', data: toGeoJSON(partners, 'pt') });
+    // Result card
+    const card = document.getElementById('resultCard');
+    card.className = 'result-card ' + (matched ? 'found' : 'not-found');
+    document.getElementById('resultIcon').textContent = matched ? '✓' : '✗';
+    document.getElementById('resultStatus').textContent = matched ? 'MATCH FOUND' : 'UNKNOWN CODE';
+    document.getElementById('resultName').textContent = matched ? entry.name : 'Not in registry';
+    document.getElementById('resultName').style.color = matched ? 'var(--accent)' : 'var(--error)';
+    document.getElementById('resultValue').textContent = rawValue;
+    document.getElementById('resultDesc').textContent = matched && entry.desc ? entry.desc : '';
 
-        // Partner layers
-        map.addLayer({ id: 'pt-glow', type: 'circle', source: 'pt',
-            paint: { 'circle-radius': 14, 'circle-color': '#f7974f', 'circle-opacity': 0.15, 'circle-blur': 1 }
-        });
-        map.addLayer({ id: 'pt-dot', type: 'circle', source: 'pt',
-            paint: {
-                'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 5, 10, 8],
-                'circle-color': '#f7974f', 'circle-opacity': 0.9,
-                'circle-stroke-width': 1, 'circle-stroke-color': '#fff', 'circle-stroke-opacity': 0.25
-            }
-        });
+    // Flash
+    const flash = document.getElementById('flash');
+    flash.className = 'flash ' + (matched ? 'green' : 'red');
+    setTimeout(() => flash.className = 'flash', 500);
 
-        // Code Hunter layers
-        map.addLayer({ id: 'ch-glow', type: 'circle', source: 'ch',
-            paint: { 'circle-radius': 16, 'circle-color': '#4f8ef7', 'circle-opacity': 0.15, 'circle-blur': 1 }
-        });
-        map.addLayer({ id: 'ch-dot', type: 'circle', source: 'ch',
-            paint: {
-                'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 6, 10, 10],
-                'circle-color': '#4f8ef7', 'circle-opacity': 0.95,
-                'circle-stroke-width': 1.5, 'circle-stroke-color': '#fff', 'circle-stroke-opacity': 0.3
-            }
-        });
+    // Log
+    const time = new Date().toLocaleTimeString();
+    scanLog.unshift({ time, rawValue, matched, name: matched ? entry.name : null });
+    if (scanLog.length > 100) scanLog.pop();
+    save();
+    renderLog();
+  }
 
-        // Popups
-        function addPopup(layer, color) {
-            map.on('click', layer, function(e) {
-                var p = e.features[0].properties;
-                new maplibregl.Popup({ offset: 10 })
-                    .setLngLat(e.features[0].geometry.coordinates.slice())
-                    .setHTML(
-                        '<div class="pname">' + p.name + '</div>' +
-                        '<div class="ptype" style="color:' + color + '">' + (p.type === 'ch' ? 'Code Hunter' : 'Partner') + '</div>' +
-                        (p.subtitle ? '<div class="psub">' + p.subtitle + '</div>' : '')
-                    )
-                    .addTo(map);
-            });
-            map.on('mouseenter', layer, function() { map.getCanvas().style.cursor = 'pointer'; });
-            map.on('mouseleave', layer, function() { map.getCanvas().style.cursor = ''; });
-        }
+  function clearResult() {
+    document.getElementById('resultCard').className = 'result-card';
+  }
 
-        addPopup('ch-dot', '#4f8ef7');
-        addPopup('pt-dot', '#f7974f');
+  // ── Log ────────────────────────────────────────────────────────────
+  function renderLog() {
+    const list = document.getElementById('logList');
+    if (scanLog.length === 0) {
+      list.innerHTML = '<div class="empty-state"><div>🗒️</div>No scans yet.</div>';
+      return;
+    }
+    list.innerHTML = scanLog.map(l => `
+      <div class="log-item ${l.matched ? 'match' : 'no-match'}">
+        <span class="log-time">${l.time}</span>
+        <span class="log-name">${l.matched ? esc(l.name) : '—'}</span>
+        <span class="log-val">${esc(l.rawValue)}</span>
+        <span class="tag ${l.matched ? 'tag-green' : 'tag-red'}">${l.matched ? 'HIT' : 'MISS'}</span>
+      </div>
+    `).join('');
+  }
 
-        // Legend
-        var LegendControl = function() {};
-        LegendControl.prototype.onAdd = function() {
-            this._container = document.createElement('div');
-            this._container.className = 'legend maplibregl-ctrl';
-            this._container.innerHTML =
-                '<b>📍 Code Hunter & Partners</b>' +
-                '<small>Location in Italia e all\'estero</small>' +
-                '<div class="legend-row"><div class="ldot" style="background:#4f8ef7;box-shadow:0 0 5px #4f8ef7"></div><span>Code Hunter (' + codeHunter.length + ')</span></div>' +
-                '<div class="legend-row"><div class="ldot" style="background:#f7974f;box-shadow:0 0 5px #f7974f"></div><span>Partner (' + partners.length + ')</span></div>';
-            return this._container;
-        };
-        LegendControl.prototype.onRemove = function() {
-            this._container.parentNode.removeChild(this._container);
-        };
-        map.addControl(new LegendControl(), 'top-left');
+  function clearLog() {
+    if (!confirm('Clear scan history?')) return;
+    scanLog = [];
+    scanCount = 0; matchCount = 0;
+    save();
+    renderLog();
+    updateStats();
+  }
+
+  // ── Utils ──────────────────────────────────────────────────────────
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function shake(el) {
+    el.style.animation = 'none';
+    el.style.borderColor = 'var(--error)';
+    setTimeout(() => el.style.borderColor = '', 800);
+  }
+
+  function updateStats() {
+    document.getElementById('statTotal').textContent = registry.length;
+    document.getElementById('statScanned').textContent = scanCount + scanLog.length;
+    document.getElementById('statMatched').textContent = matchCount + scanLog.filter(l => l.matched).length;
+    document.getElementById('countLabel').textContent = registry.length;
+  }
+
+  // ── Enter key on form ──────────────────────────────────────────────
+  ['inputName','inputValue','inputDesc'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') addEntry();
     });
+  });
+
+  // ── Init ───────────────────────────────────────────────────────────
+  renderRegistry();
+  renderLog();
+  updateStats();
 </script>
-
 </body>
 </html>
